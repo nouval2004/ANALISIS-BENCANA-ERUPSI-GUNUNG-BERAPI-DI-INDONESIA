@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisasi Jumlah Gunung Meletus berdasarkan Jenisnya</title>
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <button onclick="window.location.href = 'index.html';">jumlah gunung meletus di indonesia bedasarkan pulaunya</button>
+  <button onclick="window.location.href = 'index3.html';">akumulasi gunung meletus di indonesia bedasarkan pulau</button>
+    <canvas id="myChart" width="800" height="400"></canvas>
+
+    <script>
+        // Ambil data dari file CSV
+        fetch('data1.csv')
+            .then(response => response.text())
+            .then(csvData => {
+                // Pisahkan data CSV menjadi array baris
+                const rows = csvData.trim().split('\n').slice(1);
+
+                // Inisialisasi objek untuk menyimpan jumlah jenis gunung meletus
+                const volcanoTypes = {
+                    'stratovolcano': 0,
+                    'complex volcano': 0,
+                    'caldera': 0,
+                    'submarine volcano': 0
+                };
+
+                // Hitung jumlah masing-masing jenis gunung meletus
+                rows.forEach(row => {
+                    const type = row.split(',')[12].toLowerCase().trim();
+                    if (volcanoTypes[type]) {
+                        volcanoTypes[type]++;
+                    } else {
+                        volcanoTypes[type] = 1;
+                    }
+                });
+
+                // Siapkan data untuk digunakan oleh Chart.js
+                const labels = Object.keys(volcanoTypes);
+                const data = Object.values(volcanoTypes);
+
+                // Buat diagram batang dengan Chart.js
+                const ctx = document.getElementById('myChart').getContext('2d');
+                const myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '',
+                            data: data,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(255, 206, 86, 0.2)',
+                                'rgba(75, 192, 192, 0.2)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>

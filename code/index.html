@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gunung Meletus di Indonesia bedasarkan pulaunya</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    .chart-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .chart-wrapper {
+      width: 960px;
+      margin: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+
+    .bar {
+      fill: steelblue;
+      transition: all 0.3s ease; /* Atur durasi transisi dan fungsi timing */
+    }
+
+    .bar.frequent {
+      fill: brown;
+    }
+
+    .legend {
+      font-size: 14px;
+    }
+
+    .legend-item {
+      display: inline-block;
+      margin-right: 20px;
+    }
+
+    .legend-color {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .axis {
+      font-size: 13px;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .x.axis path {
+      display: none;
+    }
+
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      padding: 6px;
+      font: 12px sans-serif;
+      background: lightsteelblue;
+      border: 0.5px solid gray;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 999; /* Set a high z-index */
+    }
+
+    .explanation {
+  background-color: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.explanation h3 {
+  color: #333;
+  margin-top: 0;
+}
+
+.explanation-content {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+}
+
+.explanation-content p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+  </style>
+</head>
+<body>
+  <button onclick="window.location.href = 'index2.html';">Gunung Meletus berdasarkan Jenisnya</button>
+  <button onclick="window.location.href = 'index3.html';">akumulasi gunung meletus di indonesia bedasarkan pulau nya</button>
+  <h1>Kategori Gunung Meletus di Indonesia bedasarkan pulaunya</h1>
+  <div class="explanation">
+    <h3>Penjelasan Metode Pengkategorian Gunung</h3>
+    <div class="explanation-content">
+      <p>Kami menentukan kategori gunung menggunakan pendekatan Min-Max Scaling, ini adalah metode normalisasi yang digunakan untuk mengubah rentang nilai data menjadi rentang yang diinginkan, yaitu antara 0 dan 1. Teknik ini berguna untuk membandingkan nilai-nilai dengan skala yang berbeda dan memudahkan interpretasi data.</p>
+      <p>Dalam visualisasi ini, Min-Max Scaling digunakan untuk mengkategorikan gunung-gunung menjadi "Gunung Sering Meletus" yang ditandai dengan warna biru dan "Gunung Jarang Meletus" yang ditandai dengan warna merah berdasarkan jumlah banyak letusan. Jika nilai normalisasi gunung >= 0.5, gunung tersebut dikategorikan sebagai "Gunung Sering Meletus". Sebaliknya, jika nilai normalisasi < 0.5, gunung dikategorikan sebagai "Gunung Jarang Meletus".:</p>
+    </div>
+  </div>
+  <select id="islandSelect"></select>
+  <div class="chart-container"></div>
+
+
+  <script>
+    let data; // Variabel global untuk menyimpan data
+
+    // Membaca data dari file data.csv
+    d3.csv("data1.csv").then(function(csvData) {
+      data = csvData;
+      const islands = Array.from(new Set(data.map(d => d.Island)));
+
+      // Menambahkan opsi pulau ke dropdown
+      const select = d3.select("#islandSelect");
+      select.selectAll("option")
+        .data(islands)
+        .enter()
+        .append("option")
+        .attr("value", d => d)
+        .text(d => d);
+
+      // Mengatur event listener untuk dropdown
+      select.on("change", function() {
+        const selectedIsland = this.value;
+        d3.selectAll(".chart-wrapper").remove(); // Menghapus chart sebelumnya
+        createChartForIsland(selectedIsland);
+      });
+
+      // Menampilkan chart untuk pulau pertama saat halaman dimuat
+      createChartForIsland(islands[0]);
+    });
+
+    function createChartForIsland(island) {
+      const volcanoData = processVolcanoData(data, island);
+      createBarChart(volcanoData, island);
+    }
+
+    function processVolcanoData(data, island) {
+      // Memfilter data untuk gunung-gunung di pulau tertentu
+      const islandVolcanoes = data.filter(d => d.Island === island);
+
+      // Menghitung jumlah meletus per gunung
+      const volcanoCount = d3.rollup(islandVolcanoes, v => v.length, d => d.Name);
+      const volcanoData = Array.from(volcanoCount, ([name, count]) => ({ name, count }));
+
+      // Menentukan nilai minimum dan maksimum jumlah meletus
+      const minEruptions = d3.min(volcanoData, d => d.count);
+      const maxEruptions = d3.max(volcanoData, d => d.count);
+
+      // Melakukan normalisasi menggunakan min-max scaling
+      const normalizedData = volcanoData.map(d => {
+        const normalizedCount = (d.count - minEruptions) / (maxEruptions - minEruptions);
+        return { name: d.name, count: d.count, normalizedCount };
+      });
+
+      // Mengkategorikan gunung berdasarkan nilai normalisasi
+      const frequentVolcanoes = normalizedData.filter(d => d.normalizedCount >= 0.5);
+      const infrequentVolcanoes = normalizedData.filter(d => d.normalizedCount < 0.5);
+
+      return { volcanoData, frequentVolcanoes, infrequentVolcanoes, minEruptions, maxEruptions };
+    }
+
+    function createBarChart(data, island) {
+      const { volcanoData, frequentVolcanoes, infrequentVolcanoes, minEruptions, maxEruptions } = data;
+
+      const margin = { top: 20, right: 20, bottom: 130, left: 40 };
+      const width = 960 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+      const x = d3.scaleBand()
+        .range([0, width])
+        .padding(0.1);
+      const y = d3.scaleLinear()
+        .range([height, 0]);
+
+      const chartWrapper = d3.select(".chart-container")
+        .append("div")
+        .attr("class", "chart-wrapper");
+
+      const svg = chartWrapper
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+      // Menambahkan elemen tooltip
+      const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      x.domain(volcanoData.map(d => d.name));
+      y.domain([0, d3.max(volcanoData, d => d.count)]);
+
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("y", 0)
+        .attr("x", 9)
+        .attr("dy", ".35em")
+        .attr("transform", "rotate(45)")
+        .style("text-anchor", "start");
+
+      svg.append("g")
+        .attr("class", "y axis")
+        .call(d3.axisLeft(y));
+
+      const bars = svg.selectAll(".bar")
+        .data(volcanoData)
+        .join(
+          enter => enter.append("rect")
+            .attr("class", d => `bar ${frequentVolcanoes.some(fv => fv.name === d.name) ? "frequent" : ""}`)
+            .attr("x", d => x(d.name))
+            .attr("width", x.bandwidth())
+            .attr("y", height) // Mulai dari bawah
+            .attr("height", 0) // Tinggi awal 0
+            .on("mouseover", function(event, d) {
+              const { minEruptions, maxEruptions } = data;
+              const normalizedCount = (d.count - minEruptions) / (maxEruptions - minEruptions);
+
+              tooltip.transition()
+                .duration(200)
+                .style("opacity", .9);
+              tooltip.html(`<strong>${d.name}</strong><br/>Jumlah Meletus: ${d.count}<br/>Min-Max Scaling: ${normalizedCount.toFixed(2)}`)
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(d) {
+              tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+            })
+            .call(enter => enter.transition().duration(500) // Tambahkan transisi untuk bar baru
+              .attr("y", d => y(d.count))
+              .attr("height", d => height - y(d.count))),
+          update => update
+            .call(update => update.transition().duration(500) // Tambahkan transisi untuk bar yang diupdate
+              .attr("y", d => y(d.count))
+              .attr("height", d => height - y(d.count))),
+          exit => exit
+            .call(exit => exit.transition().duration(500) // Tambahkan transisi untuk bar yang dihapus
+              .attr("y", height)
+              .attr("height", 0)
+              .remove())
+        );
+
+      chartWrapper.append("h2")
+        .text(`Gunung Meletus di Pulau ${island}`);
+
+      // Membuat legenda
+      const legend = chartWrapper.append("div").attr("class", "legend");
+      legend.append("div").attr("class", "legend-item").html(`<span class="legend-color" style="background-color: brown;"></span> Gunung Sering Meletus`);
+      legend.append("div").attr("class", "legend-item").html(`<span class="legend-color" style="background-color: steelblue;"></span> Gunung Jarang Meletus`);
+    }
+  </script>
+</body>
+</html>

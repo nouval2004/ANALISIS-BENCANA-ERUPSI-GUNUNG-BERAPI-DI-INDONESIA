@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jumlah gunung yang meletus berdasarkan pulau</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <button onclick="window.location.href = 'index.html';">gunung meletus di indonesia bedasarkan pulaunya</button>
+    <button onclick="window.location.href = 'index.html';">gunung meletus berdasarkan jenis</button>
+    <h1>akumulasi gunung meletus di indonesia bedasarkan pulau</h1>
+    <div id="plot"></div>
+    <script>
+        // Load CSV file
+        Plotly.d3.csv('data1.csv', function(err, rows) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+
+            // Data preprocessing
+            var islandCounts = {};
+            rows.forEach(function(row) {
+                var island = row['Island'];
+                if (!islandCounts[island]) {
+                    islandCounts[island] = 1;
+                } else {
+                    islandCounts[island]++;
+                }
+            });
+
+            var islandNames = Object.keys(islandCounts);
+            var eruptionCounts = islandNames.map(function(island) {
+                return islandCounts[island];
+            });
+
+            // Calculate percentages
+            var total = eruptionCounts.reduce(function(a, b) { return a + b; }, 0);
+            var percentages = eruptionCounts.map(function(count) {
+                return (count / total * 100).toFixed(2);
+            });
+
+            // Create pie chart
+            var data = [{
+                values: eruptionCounts,
+                labels: islandNames,
+                type: 'pie',
+                text: percentages.map(function(percent) { return percent + '%'; }),
+                textinfo: 'text', // Show percentage values on the pie slices
+                hoverinfo: 'label+value+percent', // Show label, value, and percentage on hover
+                insidetextorientation: 'radial' // Rotate text clockwise
+            }];
+
+            var layout = {
+                title: 'Number of Eruptions by Island',
+                width: 800, // Lebar canvas dalam piksel
+                height: 600 // Tinggi canvas dalam piksel
+            };
+
+            Plotly.newPlot('plot', data, layout);
+        });
+    </script>
+</body>
+</html>
